@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Knob &amp; Clog — A Shower Boss Fight</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #0d1117;
+    color: #cfd8e3;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+  #game { box-shadow: 0 0 0 2px #2a3550, 0 18px 50px rgba(0,0,0,.6); line-height: 0; }
+  #hint { font-size: 12px; letter-spacing: .06em; opacity: .65; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+  <div id="game"></div>
+  <div id="hint">WASD / ARROWS to move &nbsp;·&nbsp; MOUSE to aim &nbsp;·&nbsp; CLICK or SPACE to throw soap &nbsp;·&nbsp; R to restart</div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
+  <script src="src/config.js"></script>
+  <script src="src/scenes/BossScene.js"></script>
+  <script src="src/main.js"></script>
+</body>
+</html>

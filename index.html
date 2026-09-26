@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shower Simulator — Knob &amp; Clog</title>
+<style>
+  :root {
+    --ink: #cfd8e3; --dim: #7c8798; --panel: rgba(10,14,20,.66);
+    --edge: rgba(126,158,190,.22); --good: #6fd08c; --warn: #f2c14e; --bad: #e8746b;
+    --cold: #5aa9e6; --hot: #ff8a5c;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #05080c; }
+  body {
+    color: var(--ink);
+    font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    letter-spacing: .03em;
+  }
+  canvas { display: block; }
+
+  #hud { position: fixed; inset: 0; pointer-events: none; }
+  .panel {
+    position: absolute; background: var(--panel); border: 1px solid var(--edge);
+    border-radius: 7px; padding: 9px 11px; backdrop-filter: blur(7px);
+  }
+  .cap { color: var(--dim); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; }
+
+  /* --- stage checklist --- */
+  #stages { top: 14px; left: 14px; min-width: 216px; }
+  #stages ol { margin: 6px 0 0; padding: 0; list-style: none; }
+  #stages li { display: flex; gap: 8px; align-items: baseline; padding: 1.5px 0; color: var(--dim); }
+  #stages li .box { width: 11px; flex: 0 0 11px; text-align: center; }
+  #stages li.done { color: var(--good); text-decoration: line-through; text-decoration-color: rgba(111,208,140,.4); }
+  #stages li.now { color: #fff; }
+  #stages li.now .box { color: var(--warn); }
+  #stages .split { margin-left: auto; font-size: 10px; opacity: .6; }
+  #hint { margin-top: 7px; padding-top: 6px; border-top: 1px solid var(--edge); color: var(--warn); max-width: 230px; }
+
+  /* --- run stats --- */
+  #stats { top: 14px; right: 14px; text-align: right; min-width: 150px; }
+  #stats .row { display: flex; justify-content: space-between; gap: 14px; }
+  #stats .v { color: #fff; font-variant-numeric: tabular-nums; }
+  #clock { font-size: 22px; line-height: 1.15; color: #fff; font-variant-numeric: tabular-nums; }
+
+  /* --- gauges --- */
+  #gauges { bottom: 14px; left: 14px; width: 262px; }
+  .gauge { margin-top: 8px; }
+  .gauge:first-child { margin-top: 2px; }
+  .gauge .lab { display: flex; justify-content: space-between; }
+  .track {
+    position: relative; height: 9px; margin-top: 4px; border-radius: 5px;
+    background: rgba(255,255,255,.07); overflow: hidden;
+  }
+  .band { position: absolute; top: 0; bottom: 0; background: rgba(111,208,140,.28); }
+  .fill { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 5px; }
+  .needle { position: absolute; top: -3px; width: 2px; height: 15px; background: #fff; border-radius: 1px; }
+  .ghost { position: absolute; top: -1px; width: 2px; height: 11px; background: rgba(255,255,255,.35); }
+
+  /* --- body meters --- */
+  #meters { bottom: 14px; right: 14px; width: 220px; }
+  .meter { margin-top: 6px; }
+  .meter:first-of-type { margin-top: 2px; }
+  .meter .lab { display: flex; justify-content: space-between; }
+
+  /* --- crosshair + prompt --- */
+  #cross {
+    position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px;
+    border-radius: 50%; background: rgba(255,255,255,.72); box-shadow: 0 0 0 1.5px rgba(0,0,0,.45);
+    transition: transform .12s, background .12s;
+  }
+  #cross.hot { transform: scale(2.1); background: var(--warn); }
+  #prompt {
+    position: absolute; left: 50%; top: calc(50% + 34px); transform: translateX(-50%);
+    white-space: nowrap; background: var(--panel); border: 1px solid var(--edge);
+    border-radius: 6px; padding: 5px 11px; opacity: 0; transition: opacity .12s;
+  }
+  #prompt.on { opacity: 1; }
+  #prompt b { color: var(--warn); font-weight: 600; }
+
+  /* --- toast --- */
+  #toast {
+    position: absolute; left: 50%; top: 17%; transform: translateX(-50%) translateY(-8px);
+    text-align: center; opacity: 0; transition: opacity .22s, transform .22s;
+  }
+  #toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast .t { font-size: 19px; color: var(--bad); letter-spacing: .1em; text-shadow: 0 2px 14px rgba(0,0,0,.8); }
+  #toast .s { color: var(--ink); opacity: .8; margin-top: 3px; }
+
+  /* --- screen effects --- */
+  #tint, #sting { position: absolute; inset: 0; pointer-events: none; }
+  #tint { mix-blend-mode: screen; opacity: 0; }
+  #sting { backdrop-filter: blur(0px); opacity: 0; box-shadow: inset 0 0 180px 40px rgba(232,116,107,.55); }
+
+  /* --- overlays --- */
+  .screen {
+    position: fixed; inset: 0; display: none; flex-direction: column; gap: 14px;
+    align-items: center; justify-content: center; text-align: center;
+    background: rgba(4,7,11,.88); backdrop-filter: blur(4px); pointer-events: auto; padding: 24px;
+  }
+  .screen.on { display: flex; }
+  .screen h1 { margin: 0; font-size: 30px; letter-spacing: .12em; color: #fff; font-weight: 600; }
+  .screen h2 { margin: 0; font-size: 15px; letter-spacing: .1em; color: var(--warn); font-weight: 500; }
+  .screen p { margin: 0; color: var(--dim); max-width: 460px; }
+  .keys { display: grid; grid-template-columns: auto auto; gap: 4px 16px; margin-top: 4px; }
+  .keys b { color: #fff; font-weight: 600; text-align: right; }
+  .keys span { color: var(--dim); text-align: left; }
+  .cta { margin-top: 8px; color: #fff; border: 1px solid var(--edge); border-radius: 7px; padding: 9px 20px; background: rgba(255,255,255,.05); }
+  #resultLines { display: grid; grid-template-columns: auto auto; gap: 3px 22px; font-variant-numeric: tabular-nums; }
+  #resultLines b { color: #fff; font-weight: 500; text-align: left; }
+  #resultLines span { color: var(--dim); text-align: right; }
+  #points { font-size: 44px; color: #fff; line-height: 1; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div id="hud">
+  <div id="tint"></div>
+  <div id="sting"></div>
+
+  <div class="panel" id="stages">
+    <div class="cap">The Routine</div>
+    <ol id="stageList"></ol>
+    <div id="hint"></div>
+  </div>
+
+  <div class="panel" id="stats">
+    <div id="clock">0.0</div>
+    <div class="row"><span class="cap">Water</span><span class="v" id="water">0.0 L</span></div>
+    <div class="row"><span class="cap">Hot tank</span><span class="v" id="tank">100%</span></div>
+    <div class="row"><span class="cap">Holding</span><span class="v" id="holding">—</span></div>
+  </div>
+
+  <div class="panel" id="gauges">
+    <div class="gauge">
+      <div class="lab"><span class="cap">Temperature</span><span class="v" id="tempVal">21°</span></div>
+      <div class="track"><div class="band" id="tempBand"></div><div class="ghost" id="tempGhost"></div><div class="needle" id="tempNeedle"></div></div>
+    </div>
+    <div class="gauge">
+      <div class="lab"><span class="cap">Pressure</span><span class="v" id="presVal">0%</span></div>
+      <div class="track"><div class="fill" id="presFill" style="background:var(--cold)"></div><div class="ghost" id="presGhost"></div></div>
+    </div>
+  </div>
+
+  <div class="panel" id="meters"></div>
+
+  <div id="cross"></div>
+  <div id="prompt"></div>
+  <div id="toast"><div class="t"></div><div class="s"></div></div>
+</div>
+
+<div class="screen on" id="startScreen">
+  <h2>SHOWERHACKS</h2>
+  <h1>SHOWER SIMULATOR</h1>
+  <p>Wet, shampoo, rinse, condition, body wash, rinse, escape. In that order.
+     The bathroom will interfere. Score is cleanliness plus comfort, minus water and minus dawdling.</p>
+  <div class="keys">
+    <b>W A S D</b><span>move</span>
+    <b>Mouse</b><span>look</span>
+    <b>Scroll</b><span>turn the knob you are looking at</span>
+    <b>E</b><span>pick up / put down</span>
+    <b>Hold LMB</b><span>squeeze / scrub (also drags knobs)</span>
+    <b>Look up</b><span>rinse your eyes under the water</span>
+    <b>Esc</b><span>release the mouse</span>
+  </div>
+  <div class="cta">Click anywhere to shower</div>
+</div>
+
+<div class="screen" id="endScreen">
+  <h2 id="grade"></h2>
+  <div id="points">0</div>
+  <div id="resultLines"></div>
+  <div class="cta">Press <b>R</b> to shower again</div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
