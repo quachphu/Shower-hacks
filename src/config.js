@@ -1,52 +1,46 @@
-// All balance numbers live here so they can be tuned without touching game logic.
-const CONFIG = {
-  width: 960,
-  height: 640,
+// Every balance number lives here so the game can be tuned without touching logic.
+// Distances are metres, times are seconds, temperatures are degrees Celsius.
 
-  // Play area the player is confined to (below the boss, inside the stall walls).
-  arena: { left: 46, right: 914, top: 232, bottom: 604 },
+export const CONFIG = {
+  room:   { minX: -2.0, maxX: 2.0, minZ: -1.6, maxZ: 1.6, height: 2.6 },
+  // The tiled wet area. Escaping means leaving it with the water off and a towel.
+  shower: { minX: -2.0, maxX: -0.2, minZ: -1.6, maxZ: 1.6 },
 
-  player: { speed: 235, radius: 15, maxHealth: 100, invulnMs: 450 },
+  player: { eyeHeight: 1.62, speed: 1.9, radius: 0.24, lookSens: 0.0021, reach: 1.7 },
 
-  soap: { speed: 640, radius: 8, damage: 7, cooldownMs: 210, lifeMs: 1600 },
-
-  boss: { maxHealth: 1000, x: 480, y: 128, radius: 64 },
-
-  attack: {
-    intervalMs: 2500,   // gap between attacks
-    telegraphMs: 850,   // warning flash before the band turns lethal
-    activeMs: 1050,     // how long the band burns/freezes
-    damagePerSec: 34,
-    bandThickness: 152,
-    minIntervalMs: 1500, // attacks speed up as the boss loses health
+  water: {
+    head:         [-1.72, 2.26, 0],  // where the shower head hangs
+    streamCentre: [-1.44, 0],        // xz the water actually lands on
+    streamRadius: 0.42,
+    tempMin: 8, tempMax: 55,
+    comfortBand: [37, 42],
+    knobStep: 1.8,                   // degrees / pressure-percent per wheel notch
   },
+
+  rates: {
+    wet: 0.62, dry: 0.055,
+    apply: 0.55,            // lather built per second while squeezing a bottle
+    rinse: 0.62,            // lather stripped per second under full pressure
+    cleanPerLather: 1.30,   // cleanliness earned per unit of lather rinsed away
+    tankDrain: 1.35,        // % of the hot tank per second at full heat + pressure
+    stingGrow: 0.5,
+    stingRinse: 0.55,       // sting washed out per second with your face up
+    stingDecay: 0.04,       // it fades on its own, but barely
+  },
+
+  comfort: {
+    max: 100,
+    coldPerDeg: 0.55,       // drain per second per degree below the comfort band
+    hotPerDeg: 0.80,        // scalding hurts more than shivering
+    sting: 11,
+    exposed: 3.2,           // wet, and standing outside the stream
+    recover: 4.0,           // regained per second inside a perfect stream
+  },
+
+  events: { firstDelay: 13, minGap: 12, maxGap: 21 },
+
+  score: { cleanWeight: 340, comfortWeight: 2.4, waterPenalty: 1.5, parTime: 100, latePenalty: 2.5 },
 };
 
-// Each tier unlocks as the Knob loses health. Purely cosmetic — the escalation gag.
-const TIERS = [
-  {
-    name: 'SAD DORM SHOWER',
-    sub: 'one sad drip',
-    tile: 0x8d8b7f, grout: 0x6f6d63, accent: 0x5f6b52, heads: 1, rgb: false, steam: false,
-  },
-  {
-    name: 'RAINFALL HEAD',
-    sub: 'ooh, water pressure',
-    tile: 0xdfe9ef, grout: 0xa9bcc7, accent: 0x4da3d8, heads: 1, rgb: false, steam: false,
-  },
-  {
-    name: 'RGB GAMER SHOWER',
-    sub: '+12% shampoo DPS',
-    tile: 0x1b1f2e, grout: 0x0e1119, accent: 0xff00d4, heads: 3, rgb: true, steam: false,
-  },
-  {
-    name: 'SAUNA MODE',
-    sub: 'you are now a soup',
-    tile: 0x7a4a2c, grout: 0x59341d, accent: 0xffae5c, heads: 5, rgb: false, steam: true,
-  },
-  {
-    name: '$500,000 BILLIONAIRE SHOWER',
-    sub: '14 heads. no regrets.',
-    tile: 0x14100c, grout: 0x2b2114, accent: 0xffd76a, heads: 14, rgb: false, steam: true,
-  },
-];
+// The canonical shower. Also, exactly the Speedrun route.
+export const STAGE_ORDER = ['wet', 'shampoo', 'rinse1', 'condition', 'bodywash', 'rinse2', 'escape'];
