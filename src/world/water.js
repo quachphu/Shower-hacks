@@ -115,6 +115,26 @@ export function buildWater(scene) {
 
 const BUBBLES = 260;
 
+// A hollow bubble: faint body, bright rim, one specular dot. A plain soft blob
+// at this size just reads as a smudge on the lens.
+function bubbleTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0, 'rgba(255,255,255,0.07)');
+  grad.addColorStop(0.70, 'rgba(255,255,255,0.13)');
+  grad.addColorStop(0.87, 'rgba(255,255,255,0.90)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 64, 64);
+  g.fillStyle = 'rgba(255,255,255,0.95)';
+  g.beginPath();
+  g.arc(23, 21, 4.2, 0, Math.PI * 2);
+  g.fill();
+  return new THREE.CanvasTexture(c);
+}
+
 /**
  * Soap bubbles drifting around you while you have lather on. Squeezing a bottle
  * should visibly do something in the world, not only move a bar on the HUD.
@@ -127,7 +147,7 @@ export function buildFoam(scene) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   const mat = new THREE.PointsMaterial({
-    map: blobTexture(0.62), color: 0xf4fbff, size: 0.05, transparent: true, opacity: 0.72,
+    map: bubbleTexture(), color: 0xf4fbff, size: 0.03, transparent: true, opacity: 0.72,
     depthWrite: false, sizeAttenuation: true,
   });
   const points = new THREE.Points(geo, mat);
@@ -144,7 +164,7 @@ export function buildFoam(scene) {
         if (i >= want) { live[i] = 0; pos[i * 3 + 1] = -5; continue; }
         if (!live[i]) {
           live[i] = 1;
-          const a = Math.random() * Math.PI * 2, r = 0.15 + Math.random() * 0.5;
+          const a = Math.random() * Math.PI * 2, r = 0.42 + Math.random() * 0.75;
           pos[i * 3]     = px + Math.cos(a) * r;
           pos[i * 3 + 1] = 0.15 + Math.random() * 1.5;
           pos[i * 3 + 2] = pz + Math.sin(a) * r;

@@ -4,6 +4,16 @@ A first-person 3D shower sim. You are in a bathroom. The bathroom is not on your
 
 Built for [Showerhacks](https://showerhacks.org) — a 12-hour hackathon where the winner gets to take a shower.
 
+## Two modes
+
+**Relaxed shower** &mdash; the scoring game below. Take your time.
+
+**Baba Yaga is coming** &mdash; 105 seconds. Partway through, she wakes in the far
+corner of the bathroom, and from then on she closes the distance **only while you
+are not looking at her**. The shower needs your eyes: on the knobs, on the caddy,
+on the bottle in your hand. Every glance away buys her a step. Finish and get out,
+or the clock runs out and she stops needing to hurry.
+
 ## The routine
 
 Wet → Shampoo → Rinse → Condition → Body wash → Rinse → Escape.
@@ -48,6 +58,12 @@ an event has dragged the real temperature away from it.
 - **Look up** in the stream — rinse your eyes
 - **R** — restart · **Esc** — release the mouse
 
+## Sound
+
+Water, heartbeat, knocking, footsteps, a door hinge and the duck are all
+synthesised with WebAudio at runtime. There are no audio files to load, so the
+game stays a static deploy.
+
 ## Run it
 
 No build step and no `npm install` — three.js loads from a CDN as an ES module.
@@ -72,7 +88,9 @@ src/game/sim.js        one pure tick(state, dt, ctx) — no three.js, no DOM
 src/game/stages.js     the routine, in order
 src/game/events.js     the bathroom's repertoire
 src/world/bathroom.js  geometry and procedural tile textures
-src/world/water.js     stream and steam particles
+src/world/water.js     stream, steam and soap-bubble particles
+src/world/babayaga.js  the figure, and her look-away pursuit
+src/audio/sfx.js       every sound, synthesised (no asset files)
 src/core/player.js     pointer-lock first-person controller
 src/ui/hud.js          DOM overlay
 ```

@@ -6,9 +6,11 @@
 <title>Shower Simulator — Knob &amp; Clog</title>
 <style>
   :root {
-    --ink: #cfd8e3; --dim: #7c8798; --panel: rgba(10,14,20,.66);
-    --edge: rgba(126,158,190,.22); --good: #6fd08c; --warn: #f2c14e; --bad: #e8746b;
-    --cold: #5aa9e6; --hot: #ff8a5c;
+    /* Warm plum-charcoal rather than blue-black: the HUD sits over a bright
+       bathroom all game, and a cold slate console fights the tone. */
+    --ink: #ece6ef; --dim: #a096ad; --panel: rgba(30,24,38,.66);
+    --edge: rgba(206,186,224,.20); --good: #82dfa7; --warn: #ffca6d; --bad: #ff9189;
+    --cold: #7cc2f2; --hot: #ffa079;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #05080c; }
@@ -22,7 +24,7 @@
   #hud { position: fixed; inset: 0; pointer-events: none; }
   .panel {
     position: absolute; background: var(--panel); border: 1px solid var(--edge);
-    border-radius: 7px; padding: 9px 11px; backdrop-filter: blur(7px);
+    border-radius: 15px; padding: 11px 13px; backdrop-filter: blur(8px);
   }
   .cap { color: var(--dim); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; }
 
@@ -73,7 +75,7 @@
   #prompt {
     position: absolute; left: 50%; top: calc(50% + 34px); transform: translateX(-50%);
     white-space: nowrap; background: var(--panel); border: 1px solid var(--edge);
-    border-radius: 6px; padding: 5px 11px; opacity: 0; transition: opacity .12s;
+    border-radius: 11px; padding: 6px 13px; opacity: 0; transition: opacity .12s;
   }
   #prompt.on { opacity: 1; }
   #prompt b { color: var(--warn); font-weight: 600; }
@@ -83,7 +85,7 @@
   #hand {
     position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%) translateY(6px);
     display: none; flex-direction: column; gap: 8px; align-items: center;
-    background: var(--panel); border: 1px solid var(--edge); border-radius: 11px;
+    background: var(--panel); border: 1px solid var(--edge); border-radius: 17px;
     padding: 11px 18px 13px; min-width: 250px; backdrop-filter: blur(7px);
     opacity: 0; transition: opacity .16s, transform .16s;
   }
@@ -121,6 +123,54 @@
   #tint { mix-blend-mode: screen; opacity: 0; }
   #sting { backdrop-filter: blur(0px); opacity: 0; box-shadow: inset 0 0 180px 40px rgba(232,116,107,.55); }
 
+  /* --- Baba Yaga mode --- */
+  #dread {
+    position: absolute; inset: 0; pointer-events: none; opacity: 0;
+    box-shadow: inset 0 0 220px 70px rgba(80,0,10,.92);
+    /* No transition: this is rewritten every frame, and a half-second ease
+       restarting each time never reaches the target value. */
+  }
+  #countdown {
+    position: absolute; left: 50%; top: 18px; transform: translateX(-50%);
+    text-align: center; display: none;
+  }
+  #countdown.on { display: block; }
+  #cdTime {
+    font-size: 34px; line-height: 1; color: #fff; font-variant-numeric: tabular-nums;
+    text-shadow: 0 2px 18px rgba(0,0,0,.85);
+  }
+  #cdLabel { font-size: 10px; letter-spacing: .2em; color: var(--dim); margin-top: 3px; }
+  #countdown.warn #cdTime { color: var(--warn); }
+  #countdown.panic #cdTime { color: var(--bad); animation: thump .5s ease-in-out infinite; }
+  @keyframes thump { 0%,100% { transform: scale(1) } 50% { transform: scale(1.11) } }
+  #watching {
+    margin-top: 5px; font-size: 11px; letter-spacing: .14em; color: var(--bad);
+    opacity: 0; transition: opacity .2s;
+  }
+  #watching.on { opacity: 1; }
+
+  #deathScreen h1 { color: var(--bad); font-size: 34px; }
+  #deathScreen .eyes { display: flex; gap: 26px; margin-bottom: 6px; }
+  #deathScreen .eyes i {
+    width: 15px; height: 15px; border-radius: 50%; background: #ffd24a;
+    box-shadow: 0 0 26px 7px rgba(255,170,40,.8); animation: blink 3.1s infinite;
+  }
+  @keyframes blink { 0%,92%,100% { opacity: 1 } 95% { opacity: .15 } }
+  .modes { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
+  .mode {
+    pointer-events: auto; cursor: pointer; text-align: left; width: 232px;
+    background: rgba(255,255,255,.05); border: 1px solid var(--edge);
+    border-radius: 13px; padding: 13px 15px; color: var(--ink); font: inherit;
+  }
+  .mode:hover, .mode:focus-visible { background: rgba(255,255,255,.1); border-color: var(--warn); }
+  .mode b { display: block; color: #fff; font-size: 14px; margin-bottom: 3px; letter-spacing: .04em; }
+  .mode span { color: var(--dim); font-size: 11.5px; line-height: 1.45; }
+  .mode.scary:hover, .mode.scary:focus-visible { border-color: var(--bad); }
+  .mode.scary b { color: var(--bad); }
+  @media (prefers-reduced-motion: reduce) {
+    #countdown.panic #cdTime, #deathScreen .eyes i { animation: none }
+  }
+
   /* --- overlays --- */
   .screen {
     position: fixed; inset: 0; display: none; flex-direction: column; gap: 14px;
@@ -134,7 +184,7 @@
   .keys { display: grid; grid-template-columns: auto auto; gap: 4px 16px; margin-top: 4px; }
   .keys b { color: #fff; font-weight: 600; text-align: right; }
   .keys span { color: var(--dim); text-align: left; }
-  .cta { margin-top: 8px; color: #fff; border: 1px solid var(--edge); border-radius: 7px; padding: 9px 20px; background: rgba(255,255,255,.05); }
+  .cta { margin-top: 8px; color: #fff; border: 1px solid var(--edge); border-radius: 13px; padding: 9px 20px; background: rgba(255,255,255,.05); }
   #resultLines { display: grid; grid-template-columns: auto auto; gap: 3px 22px; font-variant-numeric: tabular-nums; }
   #resultLines b { color: #fff; font-weight: 500; text-align: left; }
   #resultLines span { color: var(--dim); text-align: right; }
@@ -147,6 +197,13 @@
 <div id="hud">
   <div id="tint"></div>
   <div id="sting"></div>
+  <div id="dread"></div>
+
+  <div id="countdown">
+    <div id="cdTime">105</div>
+    <div id="cdLabel">SECONDS</div>
+    <div id="watching">SHE IS MOVING &mdash; LOOK AT HER</div>
+  </div>
 
   <div class="panel" id="stages">
     <div class="cap">The Routine</div>
@@ -206,7 +263,23 @@
     <b>Look up</b><span>rinse your eyes under the water</span>
     <b>Esc</b><span>release the mouse</span>
   </div>
-  <div class="cta">Click anywhere to shower</div>
+  <div class="modes">
+    <button class="mode" id="modeRelaxed" type="button">
+      <b>Relaxed shower</b>
+      <span>Take your time. Score is cleanliness, comfort, water and speed.</span>
+    </button>
+    <button class="mode scary" id="modeBaba" type="button">
+      <b>Baba Yaga is coming</b>
+      <span>105 seconds. She wakes partway through and only moves while you are not looking at her.</span>
+    </button>
+  </div>
+</div>
+
+<div class="screen" id="deathScreen">
+  <div class="eyes"><i></i><i></i></div>
+  <h1>SHE FOUND YOU</h1>
+  <p id="deathLine">You were still rinsing.</p>
+  <div class="cta">Press <b>R</b> to try again</div>
 </div>
 
 <div class="screen" id="endScreen">

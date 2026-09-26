@@ -39,6 +39,17 @@ export const CONFIG = {
 
   events: { firstDelay: 13, minGap: 12, maxGap: 21 },
 
+  // Baba Yaga mode. She wakes partway through and closes in whenever you are
+  // not looking at her, which is most of the time, because showering needs eyes.
+  baba: {
+    limit: 105,        // seconds on the clock
+    wakesAt: 0.62,     // fraction of the limit remaining when she appears
+    speed: 0.26,       // m/s unobserved, at the moment she wakes
+    speedMax: 1.15,    // m/s as the clock runs out
+    reach: 0.85,       // how close before she takes you
+    seenDot: 0.55,     // how centred in view she must be to count as watched
+  },
+
   score: { cleanWeight: 340, comfortWeight: 2.4, waterPenalty: 1.5, parTime: 100, latePenalty: 2.5 },
 };
 
