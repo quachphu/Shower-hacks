@@ -120,6 +120,20 @@ export function tryEscape(s) {
   return null;
 }
 
+/** Seconds left in Baba Yaga mode, and the same as a 0..1 fraction. */
+export function timeLeft(s) {
+  const secs = Math.max(0, CONFIG.baba.limit - s.t);
+  return { secs, frac: secs / CONFIG.baba.limit };
+}
+
+/** She got you, or the clock did. Ends the run without a score. */
+export function die(s, cause) {
+  if (s.finished) return;
+  s.dead = true;
+  s.deathCause = cause;
+  s.finished = true;
+}
+
 export function scoreRun(s) {
   const b = s.body;
   const clean = (b.hairClean + b.conditioned + b.bodyClean) / 3;

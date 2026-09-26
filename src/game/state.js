@@ -2,11 +2,13 @@ import { CONFIG } from '../config.js';
 
 // The entire simulation is this plain object. Nothing in here knows about
 // three.js or the DOM, which is what lets Speedrun mode replay and verify runs.
-export function createState() {
+export function createState(mode = 'relaxed') {
   return {
+    mode,                              // 'relaxed' | 'baba'
     t: 0,
     finished: false,
     escaped: false,
+    dead: false,
 
     knob: { temp: 21, pressure: 0 },   // what the player dialled in
     offset: { temp: 0, pressure: 0 },  // what events are doing to it right now
