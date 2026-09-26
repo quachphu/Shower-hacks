@@ -37,8 +37,8 @@ export function buildBathroom(scene) {
   const w = R.maxX - R.minX, d = R.maxZ - R.minZ, h = R.height;
   const cx = (R.minX + R.maxX) / 2, cz = (R.minZ + R.maxZ) / 2;
 
-  const wetTex = tileTexture({ tile: '#a9c2cc', grout: '#5f7480', cells: 5 });
-  const dryTex = tileTexture({ tile: '#c8c0b1', grout: '#8d8477', cells: 3 });
+  const wetTex = tileTexture({ tile: '#b7d6da', grout: '#6f939b', cells: 5 });
+  const dryTex = tileTexture({ tile: '#ded1c1', grout: '#a89684', cells: 3 });
   wetTex.repeat.set(3, 3);
   dryTex.repeat.set(4, 3);
 
@@ -112,7 +112,8 @@ export function buildBathroom(scene) {
 
   buildFixtures(group);
   const interactables = buildInteractables(group);
-  return { group, interactables };
+  const duck = buildDuck(group);
+  return { group, interactables, duck };
 }
 
 // Toilet, sink and mirror. Pure set dressing, but a shower game needs a bathroom.
@@ -156,9 +157,40 @@ function buildFixtures(group) {
   head.rotation.z = -0.3;
   group.add(arm, elbow, head);
 
-  const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.035, 0.18), lambert(0xc3ccd1));
-  shelf.position.set(-1.15, 1.18, -1.48);
-  group.add(shelf);
+  const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.035, 0.2), lambert(0xd3dbdf));
+  shelf.position.set(-1.18, 1.18, -1.46);
+  const lip = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.03, 0.016), lambert(0xb4bfc4));
+  lip.position.set(-1.18, 1.2, -1.37);
+  for (const dx of [-0.31, 0.31]) {
+    const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.05, 0.17), lambert(0xa9b4ba));
+    bracket.position.set(-1.18 + dx, 1.152, -1.46);
+    group.add(bracket);
+  }
+  group.add(shelf, lip);
+
+  // A soft mat to land on, so stepping out isn't onto bare tile.
+  const mat = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.022, 0.58), lambert(0x8fbcb0));
+  mat.position.set(0.32, 0.011, 0.26);
+  const matTrim = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.024, 0.5), lambert(0xa7cfc4));
+  matTrim.position.set(0.32, 0.013, 0.26);
+  group.add(mat, matTrim);
+
+  // A plant on the cistern. Nobody's bathroom is only fixtures.
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.048, 0.1, 14), lambert(0xd98b6a));
+  pot.position.set(1.55, 0.97, -1.32);
+  const soil = new THREE.Mesh(new THREE.CylinderGeometry(0.056, 0.056, 0.012, 14), lambert(0x4a3a2c));
+  soil.position.set(1.55, 1.021, -1.32);
+  group.add(pot, soil);
+  const leafMat = lambert(0x62a86b);
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2;
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.038, 10, 8), leafMat);
+    leaf.scale.set(0.42, 1, 0.42);
+    leaf.position.set(1.55 + Math.cos(a) * 0.036, 1.07 + (i % 3) * 0.022, -1.32 + Math.sin(a) * 0.036);
+    leaf.rotation.z = Math.cos(a) * 0.5;
+    leaf.rotation.x = Math.sin(a) * 0.5;
+    group.add(leaf);
+  }
 
   const hook = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.1, 8), lambert(0xb0b8bc));
   hook.rotation.x = Math.PI / 2;
@@ -170,60 +202,119 @@ function buildFixtures(group) {
   group.add(farShelf);
 }
 
-// Everything the crosshair can land on. userData.interact is what main.js reads.
+// Everything the crosshair can land on. Each entry is the visible object itself
+// (often a Group of parts), so hiding or cloning it just works.
 function buildInteractables(group) {
   const list = [];
-  const add = (mesh, interact) => {
-    mesh.userData.interact = interact;
-    group.add(mesh);
-    list.push(mesh);
-    return mesh;
+  const add = (obj, interact) => {
+    obj.userData.interact = interact;
+    group.add(obj);
+    list.push(obj);
+    return obj;
   };
 
-  // Knobs sit on the wet-area end wall, angled to face the player.
+  // --- taps -------------------------------------------------------------
   const knob = (z, colour) => {
     const g = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.05, 20), lambert(colour));
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.062, 0.05, 22), lambert(colour));
     body.rotation.z = Math.PI / 2;
-    const pointer = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.012, 0.055), lambert(0x1b2126));
-    pointer.position.set(0.03, 0.05, 0);
-    g.add(body, pointer);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.076, 0.011, 8, 24), lambert(0x8e9aa2));
+    rim.rotation.y = Math.PI / 2;
+    const grip = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.014, 0.088), lambert(0x22292e));
+    grip.position.x = 0.028;
+    const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.095, 0.014, 22), lambert(0x9fadb4));
+    plate.rotation.z = Math.PI / 2;
+    plate.position.x = -0.032;
+    g.add(plate, body, rim, grip);
     g.position.set(-1.93, 1.14, z);
-    return { group: g, pointer };
+    return g;
   };
+  const tempKnob = knob(-0.34, 0xe8785c);
+  const presKnob = knob(0.34, 0x5fa8e0);
+  group.add(tempKnob, presKnob);
 
-  const temp = knob(-0.34, 0xd8604a);
-  const pres = knob(0.34, 0x4a8fd8);
-  group.add(temp.group, pres.group);
-
-  // The clickable target is an invisible slab in front of each knob — a small
-  // cylinder is miserable to hit with a crosshair.
+  // A crosshair-sized slab in front of each knob; the knob itself is too small to hit.
   const hit = (z, interact) => {
-    const m = new THREE.Mesh(
-      new THREE.BoxGeometry(0.1, 0.24, 0.24),
-      new THREE.MeshBasicMaterial({ visible: false })
-    );
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.26, 0.26),
+      new THREE.MeshBasicMaterial({ visible: false }));
     m.position.set(-1.9, 1.14, z);
     return add(m, interact);
   };
-  hit(-0.34, { kind: 'knob', field: 'temp', label: 'Temperature' });
-  hit(0.34, { kind: 'knob', field: 'pressure', label: 'Pressure' });
+  hit(-0.34, { kind: 'knob', field: 'temp', label: 'Temperature', highlight: tempKnob });
+  hit(0.34, { kind: 'knob', field: 'pressure', label: 'Pressure', highlight: presKnob });
+
+  // --- pump bottles ------------------------------------------------------
+  const bottleProfile = [
+    [0, 0], [0.047, 0], [0.05, 0.012], [0.05, 0.145],
+    [0.044, 0.172], [0.026, 0.192], [0.021, 0.2], [0, 0.2],
+  ].map(([x, y]) => new THREE.Vector2(x, y));
 
   const bottle = (x, colour, id, label) => {
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.21, 14), lambert(colour));
-    m.position.set(x, 1.3, -1.48);
-    return add(m, { kind: 'item', id, label });
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.LatheGeometry(bottleProfile, 22), lambert(colour));
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.052, 0.062, 22), lambert(0xf6f3ec));
+    band.position.y = 0.072;
+    const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.022, 14), lambert(0x59636a));
+    collar.position.y = 0.208;
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.036, 12), lambert(0x6d777e));
+    stem.position.y = 0.234;
+    const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.0115, 0.0115, 0.055, 12), lambert(0x6d777e));
+    spout.rotation.z = Math.PI / 2;
+    spout.position.set(0.022, 0.25, 0);
+    g.add(body, band, collar, stem, spout);
+    g.position.set(x, 1.205, -1.46);
+    return add(g, { kind: 'item', id, label });
   };
-  const shampoo = bottle(-1.33, 0xf2c14e, 'shampoo', 'Shampoo');
-  const conditioner = bottle(-1.15, 0x7fc9a1, 'conditioner', 'Conditioner');
+  const shampoo = bottle(-1.36, 0xf2c14e, 'shampoo', 'Shampoo');
+  const conditioner = bottle(-1.18, 0x7fc9a1, 'conditioner', 'Conditioner');
 
-  const soap = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.05, 0.075), lambert(0xf0e6d2));
-  soap.position.set(-0.97, 1.22, -1.48);
-  add(soap, { kind: 'item', id: 'soap', label: 'Soap' });
+  // --- soap: a rounded bar, not a brick ---------------------------------
+  const soapG = new THREE.Group();
+  const bar = new THREE.Mesh(new THREE.SphereGeometry(0.058, 20, 14), lambert(0xf6ead2));
+  bar.scale.set(1.05, 0.46, 0.74);
+  const shine = new THREE.Mesh(new THREE.SphereGeometry(0.02, 10, 8), lambert(0xfffaf0));
+  shine.scale.set(1.4, 0.3, 0.8);
+  shine.position.set(-0.012, 0.024, 0.008);
+  soapG.add(bar, shine);
+  soapG.position.set(-0.99, 1.215, -1.46);
+  const soap = add(soapG, { kind: 'item', id: 'soap', label: 'Soap' });
 
-  const towel = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.42, 0.07), lambert(0xe8746b));
-  towel.position.set(0.55, 1.4, -1.5);
-  add(towel, { kind: 'item', id: 'towel', label: 'Towel' });
+  // --- towel, folded over its hook --------------------------------------
+  const towelG = new THREE.Group();
+  const hang = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.4, 0.075), lambert(0xf08a7d));
+  const fold = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.07, 0.095), lambert(0xe2705f));
+  fold.position.y = 0.2;
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.035, 0.079), lambert(0xfbd9c6));
+  stripe.position.y = -0.09;
+  towelG.add(hang, fold, stripe);
+  towelG.position.set(0.55, 1.38, -1.5);
+  const towel = add(towelG, { kind: 'item', id: 'towel', label: 'Towel' });
 
   return { meshes: list, byId: { shampoo, conditioner, soap, towel } };
+}
+
+// A rubber duck. Non-essential, but a shower without one is just a wet room.
+function buildDuck(scene) {
+  const g = new THREE.Group();
+  const yellow = lambert(0xffd43f);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.058, 18, 14), yellow);
+  body.scale.set(1, 0.86, 1.25);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.036, 16, 12), yellow);
+  head.position.set(0, 0.055, -0.045);
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.032, 10), lambert(0xf28c28));
+  beak.rotation.x = -Math.PI / 2;
+  beak.position.set(0, 0.049, -0.086);
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.042, 10), yellow);
+  tail.rotation.x = -0.9;
+  tail.position.set(0, 0.026, 0.07);
+  const eye = () => new THREE.Mesh(new THREE.SphereGeometry(0.0065, 8, 6), lambert(0x201a12));
+  const eyeL = eye(), eyeR = eye();
+  eyeL.position.set(-0.019, 0.066, -0.068);
+  eyeR.position.set(0.019, 0.066, -0.068);
+  g.add(body, head, beak, tail, eyeL, eyeR);
+  g.position.set(-1.78, 0.14, 0.86);
+  g.rotation.y = 0.7;
+  g.scale.setScalar(1.6);
+  scene.add(g);
+  return g;
 }

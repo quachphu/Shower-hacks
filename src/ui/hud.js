@@ -5,6 +5,12 @@ import { waterTemp, waterPressure } from '../game/state.js';
 const $ = id => document.getElementById(id);
 const pct = (v, lo, hi) => ((v - lo) / (hi - lo)) * 100;
 
+const PRODUCTS = {
+  shampoo:     { label: 'Shampoo',     colour: '#f2c14e', verb: 'squeeze', doing: 'Squeezing', lather: 'hairLather' },
+  conditioner: { label: 'Conditioner', colour: '#7fc9a1', verb: 'squeeze', doing: 'Squeezing', lather: 'condLather' },
+  soap:        { label: 'Soap',        colour: '#f0e6d2', verb: 'scrub',   doing: 'Scrubbing', lather: 'bodyLather' },
+};
+
 const METERS = [
   { key: 'wet',         label: 'Wet',         colour: 'var(--cold)' },
   { key: 'hairClean',   label: 'Hair',        colour: 'var(--good)' },
@@ -19,6 +25,8 @@ export function createHud() {
     tempVal: $('tempVal'), tempNeedle: $('tempNeedle'), tempGhost: $('tempGhost'), tempBand: $('tempBand'),
     presVal: $('presVal'), presFill: $('presFill'), presGhost: $('presGhost'),
     meters: $('meters'), cross: $('cross'), prompt: $('prompt'),
+    hand: $('hand'), handSwatch: $('handSwatch'), handName: $('handName'),
+    handMsg: $('handMsg'), handFill: $('handFill'),
     toast: $('toast'), tint: $('tint'), sting: $('sting'),
     start: $('startScreen'), end: $('endScreen'),
   };
@@ -84,6 +92,8 @@ export function createHud() {
       });
       el.hint.textContent = STAGES[s.stage]?.hint ?? '';
 
+      renderHand(el, s, look.hand);
+
       // Crosshair + prompt.
       el.cross.classList.toggle('hot', !!look.prompt);
       el.prompt.classList.toggle('on', !!look.prompt);
@@ -129,6 +139,29 @@ export function createHud() {
 
     hideResults() { el.end.classList.remove('on'); },
   };
+}
+
+// The held item's card. It stays up regardless of where the crosshair points,
+// so "what do I do with this?" is answerable without hunting for a blank wall.
+function renderHand(el, s, hand) {
+  const p = hand && PRODUCTS[hand.id];
+  if (!p) { el.hand.className = ''; return; }
+
+  el.handSwatch.style.background = p.colour;
+  el.handName.textContent = p.label;
+  const pct = Math.round(s.body[p.lather] * 100);
+  el.handFill.style.width = pct + '%';
+
+  if (!hand.apply.ok) {
+    el.hand.className = 'on blocked';
+    el.handMsg.textContent = hand.apply.why ?? `You cannot use the ${p.label.toLowerCase()} yet`;
+  } else if (hand.applying) {
+    el.hand.className = 'on active';
+    el.handMsg.innerHTML = `${p.doing}&hellip; <b>${pct}%</b> &mdash; keep holding`;
+  } else {
+    el.hand.className = 'on ready';
+    el.handMsg.innerHTML = `Hold <b>left-click</b> to ${p.verb}`;
+  }
 }
 
 function setMeter(fills, vals, key, v01) {
