@@ -18,7 +18,7 @@ function blobTexture(core) {
 }
 
 const DROPS = 900;
-const PUFFS = 140;
+const PUFFS = 320;
 
 export function buildWater(scene) {
   const [hx, hy, hz] = CONFIG.water.head;
@@ -70,7 +70,7 @@ export function buildWater(scene) {
   const puffGeo = new THREE.BufferGeometry();
   puffGeo.setAttribute('position', new THREE.BufferAttribute(puffPos, 3));
   const puffMat = new THREE.PointsMaterial({
-    map: blobTexture(0.05), color: 0xffffff, size: 0.75, transparent: true, opacity: 0,
+    map: blobTexture(0.02), color: 0xffffff, size: 0.42, transparent: true, opacity: 0,
     depthWrite: false, sizeAttenuation: true, blending: THREE.NormalBlending,
   });
   const steam = new THREE.Points(puffGeo, puffMat);
@@ -99,7 +99,7 @@ export function buildWater(scene) {
       }
 
       // Steam only exists if the water is hot and actually running.
-      const target = THREE.MathUtils.clamp((temp - 34) / 16, 0, 1) * flow * 0.5;
+      const target = THREE.MathUtils.clamp((temp - 34) / 16, 0, 1) * flow * 0.38;
       puffMat.opacity += (target - puffMat.opacity) * Math.min(1, dt * 1.6);
       if (puffMat.opacity > 0.01) {
         for (let i = 0; i < PUFFS; i++) {
