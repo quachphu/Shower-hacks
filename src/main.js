@@ -1,12 +1,14 @@
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { createState, waterTemp, flow } from './game/state.js';
-import { tick, tryEscape, scoreRun, canApply } from './game/sim.js';
+import { tick, tryEscape, scoreRun, canApply, timeLeft, die } from './game/sim.js';
 import { STAGES } from './game/stages.js';
 import { buildBathroom } from './world/bathroom.js';
 import { buildWater, buildFoam, inStream } from './world/water.js';
 import { createPlayer, inShower } from './core/player.js';
 import { createHud } from './ui/hud.js';
+import { createBabaYaga } from './world/babayaga.js';
+import * as sfx from './audio/sfx.js';
 
 // --- renderer ------------------------------------------------------------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -34,22 +36,30 @@ const water = buildWater(scene);
 const foam = buildFoam(scene);
 const player = createPlayer(camera, renderer.domElement);
 const hud = createHud();
+const baba = createBabaYaga(scene, camera);
 
 // Remember where every loose object lives so restarts and drops can put it back.
 const HOME = new Map(interactables.meshes.map(m => [m, m.position.clone()]));
 const FAR_SHELF = new THREE.Vector3(1.7, 1.19, 1.35);
 
 // --- run state -----------------------------------------------------------
-let s = createState();
+let mode = 'relaxed';
+let s = createState(mode);
 let started = false;
+let beatAt = 0;
 let heldModel = null;
 const raycaster = new THREE.Raycaster();
 raycaster.far = CONFIG.player.reach;
 const CENTRE = new THREE.Vector2(0, 0);
 
+document.getElementById('modeRelaxed').addEventListener('click', () => { mode = 'relaxed'; });
+document.getElementById('modeBaba').addEventListener('click', () => { mode = 'baba'; });
+
 player.onLockChange = (active, fallback) => {
   if (active && !started) {
     started = true;
+    s.mode = mode;
+    sfx.initAudio();               // needs the user gesture that just happened
     hud.showStart(false);
     if (fallback) hud.toast({ title: 'MOUSE NOT CAPTURED', sub: 'this viewer blocks pointer lock — look still works, Esc to stop' }, s.t);
   }
@@ -182,19 +192,42 @@ function frame(now) {
       if (event.id === 'towel') interactables.byId.towel.position.copy(FAR_SHELF);
     }
 
+    if (s.mode === 'baba') {
+      const { secs, frac } = timeLeft(s);
+      baba.update(dt, frac, p);
+      if (baba.reached) { sfx.shriek(); die(s, 'caught'); }
+      else if (secs <= 0) { sfx.shriek(); die(s, 'time'); }
+
+      // A heartbeat that quickens as she closes.
+      const pressure = baba.pressure(frac);
+      if (pressure > 0 && now > beatAt) {
+        sfx.heartbeat(pressure);
+        beatAt = now + (1000 - pressure * 560);
+      }
+    }
+
     // Leaving the wet area with the routine done ends the run.
     let escapeNote = null;
     if (STAGES[s.stage]?.id === 'escape' && !inShower(p)) escapeNote = tryEscape(s);
     if (s.finished) {
       player.lockEnabled = false;
       player.release();
-      hud.showResults(s, scoreRun(s));
+      sfx.setDrone(0);
+      sfx.setWater(0);
+      if (s.dead) {
+        hud.showDeath(s, s.deathCause === 'time'
+          ? 'The clock ran out. She did not need to hurry.'
+          : DEATH_LINES[Math.min(s.stage, DEATH_LINES.length - 1)]);
+      } else {
+        hud.showResults(s, scoreRun(s));
+      }
     }
 
     setHover(target.mesh);
     hud.update(s, {
       prompt: escapeNote ?? promptFor(target.interact),
       hand: s.holding ? { id: s.holding, apply: canApply(s, underStream), applying: applying } : null,
+      baba: s.mode === 'baba' ? { pressure: baba.pressure(timeLeft(s).frac), watched: baba.watched } : null,
     });
   }
 
@@ -204,6 +237,7 @@ function frame(now) {
 
   const b = s.body;
   foam.update(dt, (b.hairLather + b.condLather + b.bodyLather) / 2, p.x, p.z);
+  sfx.setWater(started && !s.finished ? flow(s) : 0);
   water.update(dt, flow(s), waterTemp(s));
   showerLight.intensity = 2.2 + flow(s) * 3.4;
   renderer.render(scene, camera);
@@ -216,14 +250,28 @@ function dropSoap() {
   soap.position.set(-1.6 + Math.random() * 1.1, 0.09, -0.5 + Math.random());
 }
 
+// Where she caught you, told as the thing you did not finish.
+const DEATH_LINES = [
+  'You had not even turned the water on.',
+  'You were still getting wet.',
+  'You had shampoo in your hair.',
+  'You were still rinsing.',
+  'You were covered in conditioner.',
+  'You were mid-scrub.',
+  'You were rinsing off. So close.',
+  'You had one foot out of the shower.',
+];
+
 function restart() {
-  s = createState();
+  s = createState(mode);
   started = false;
   if (hovered) { glow(hovered, 0x000000); hovered = null; }
   if (heldModel) { camera.remove(heldModel); heldModel = null; }
   for (const [mesh, home] of HOME) { mesh.visible = true; mesh.position.copy(home); }
   player.reset();
   player.lockEnabled = true;
+  baba.reset();
+  beatAt = 0;
   hud.hideResults();
   hud.showStart(true);
   hud.update(s, { prompt: null });

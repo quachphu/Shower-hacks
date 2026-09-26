@@ -1,6 +1,7 @@
 import { CONFIG } from '../config.js';
 import { STAGES } from '../game/stages.js';
 import { waterTemp, waterPressure } from '../game/state.js';
+import { timeLeft } from '../game/sim.js';
 
 const $ = id => document.getElementById(id);
 const pct = (v, lo, hi) => ((v - lo) / (hi - lo)) * 100;
@@ -27,6 +28,8 @@ export function createHud() {
     meters: $('meters'), cross: $('cross'), prompt: $('prompt'),
     hand: $('hand'), handSwatch: $('handSwatch'), handName: $('handName'),
     handMsg: $('handMsg'), handFill: $('handFill'),
+    dread: $('dread'), countdown: $('countdown'), cdTime: $('cdTime'),
+    watching: $('watching'), death: $('deathScreen'),
     toast: $('toast'), tint: $('tint'), sting: $('sting'),
     start: $('startScreen'), end: $('endScreen'),
   };
@@ -93,6 +96,7 @@ export function createHud() {
       el.hint.textContent = STAGES[s.stage]?.hint ?? '';
 
       renderHand(el, s, look.hand);
+      renderDread(el, s, look.baba);
 
       // Crosshair + prompt.
       el.cross.classList.toggle('hot', !!look.prompt);
@@ -139,12 +143,29 @@ export function createHud() {
       el.end.classList.add('on');
     },
 
-    hideResults() { el.end.classList.remove('on'); },
+    showDeath(s, line) {
+      el.hand.className = '';
+      el.prompt.classList.remove('on');
+      $('deathLine').textContent = line;
+      el.death.classList.add('on');
+    },
+
+    hideResults() { el.end.classList.remove('on'); el.death.classList.remove('on'); },
   };
 }
 
 // The held item's card. It stays up regardless of where the crosshair points,
 // so "what do I do with this?" is answerable without hunting for a blank wall.
+// The clock, the red closing in, and the warning that she is in your view.
+function renderDread(el, s, baba) {
+  if (s.mode !== 'baba') { el.countdown.className = ''; el.dread.style.opacity = 0; return; }
+  const { secs, frac } = timeLeft(s);
+  el.countdown.className = frac < 0.16 ? 'on panic' : frac < 0.38 ? 'on warn' : 'on';
+  el.cdTime.textContent = Math.ceil(secs);
+  el.dread.style.opacity = (baba?.pressure ?? 0) * 0.85;
+  el.watching.classList.toggle('on', !!baba && baba.pressure > 0 && !baba.watched);
+}
+
 function renderHand(el, s, hand) {
   const p = hand && PRODUCTS[hand.id];
   if (!p) { el.hand.className = ''; return; }
