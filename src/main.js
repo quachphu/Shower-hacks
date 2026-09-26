@@ -4,7 +4,7 @@ import { createState, waterTemp, flow } from './game/state.js';
 import { tick, tryEscape, scoreRun, canApply } from './game/sim.js';
 import { STAGES } from './game/stages.js';
 import { buildBathroom } from './world/bathroom.js';
-import { buildWater, inStream } from './world/water.js';
+import { buildWater, buildFoam, inStream } from './world/water.js';
 import { createPlayer, inShower } from './core/player.js';
 import { createHud } from './ui/hud.js';
 
@@ -29,8 +29,9 @@ const showerLight = new THREE.PointLight(0xbcdcf5, 3, 5, 2);
 showerLight.position.set(-1.3, 2.3, 0);
 scene.add(ceilingLight, showerLight);
 
-const { interactables } = buildBathroom(scene);
+const { interactables, duck } = buildBathroom(scene);
 const water = buildWater(scene);
+const foam = buildFoam(scene);
 const player = createPlayer(camera, renderer.domElement);
 const hud = createHud();
 
@@ -87,6 +88,7 @@ function setHeld(id, mesh) {
     prev.position.copy(HOME.get(prev));
   }
   if (heldModel) { camera.remove(heldModel); heldModel = null; }
+  if (hovered) { glow(hovered, 0x000000); hovered = null; }
 
   s.holding = id;
   if (!id) return;
@@ -104,27 +106,39 @@ function setHeld(id, mesh) {
 // --- what the crosshair is on -------------------------------------------
 function look() {
   raycaster.setFromCamera(CENTRE, camera);
-  const hits = raycaster.intersectObjects(interactables.meshes, false);
-  const mesh = hits.find(h => h.object.visible || h.object.userData.interact?.kind === 'knob')?.object;
-  return { mesh, interact: mesh?.userData.interact };
+  // Recursive: a bottle is a Group of parts, so the hit lands on a child.
+  for (const h of raycaster.intersectObjects(interactables.meshes, true)) {
+    let o = h.object;
+    while (o && !o.userData.interact) o = o.parent;
+    // Raycasting ignores visibility, so skip anything currently in your hand.
+    if (o && o.visible) return { mesh: o, interact: o.userData.interact };
+  }
+  return {};
 }
 
-function promptFor(it, underStream) {
-  if (!it) {
-    if (s.holding) {
-      const a = canApply(s, underStream);
-      return a.ok
-        ? `Hold <b>LMB</b> to ${s.holding === 'soap' ? 'scrub' : 'squeeze'} &nbsp;·&nbsp; <b>E</b> put down`
-        : a.why ? `${a.why}` : `<b>E</b> put down the ${s.holding}`;
-    }
-    return null;
-  }
+function promptFor(it) {
+  if (!it) return s.holding ? `<b>E</b> put the ${s.holding} back` : null;
   if (it.kind === 'knob') {
-    const v = it.field === 'temp' ? waterTemp(s).toFixed(1) + '°' : Math.round(s.knob.pressure) + '%';
-    return `${it.label} <b>${v}</b> &nbsp;·&nbsp; <b>Scroll</b> or drag <b>LMB</b>`;
+    const v = it.field === 'temp' ? waterTemp(s).toFixed(1) + '\u00b0' : Math.round(s.knob.pressure) + '%';
+    return `${it.label} <b>${v}</b> &nbsp;\u00b7&nbsp; <b>scroll</b> to turn`;
   }
   if (it.id === 'towel') return `<b>E</b> take the towel`;
-  return s.holding === it.id ? `<b>E</b> put back the ${it.label}` : `<b>E</b> take the ${it.label}`;
+  return s.holding === it.id ? `<b>E</b> put the ${it.label} back` : `<b>E</b> take the ${it.label}`;
+}
+
+// Whatever the crosshair is on lights up, so interactable things read as touchable.
+let hovered = null;
+const HOVER = 0x3a2f12;
+function setHover(mesh) {
+  if (hovered === mesh) return;
+  glow(hovered, 0x000000);
+  hovered = mesh;
+  glow(hovered, HOVER);
+}
+function glow(mesh, hex) {
+  if (!mesh) return;
+  // Knob hitboxes are invisible slabs; they point at the knob you actually see.
+  (mesh.userData.interact?.highlight ?? mesh).traverse(o => o.material?.emissive?.setHex(hex));
 }
 
 // --- knobs ---------------------------------------------------------------
@@ -158,12 +172,9 @@ function frame(now) {
   if (onKnob && started && !s.finished) turnKnob(target.interact.field, notches + drag * 0.06);
 
   if (started && !s.finished) {
-    const { event } = tick(s, dt, {
-      underStream,
-      faceUp: player.pitch() > 0.42,
-      // Dragging a knob must not also squeeze the bottle in your other hand.
-      applying: player.applying && !onKnob,
-    });
+    // Dragging a knob must not also squeeze the bottle in your other hand.
+    const applying = player.applying && !onKnob;
+    const { event } = tick(s, dt, { underStream, faceUp: player.pitch() > 0.42, applying });
 
     if (event) {
       hud.toast(event, s.t);
@@ -180,9 +191,19 @@ function frame(now) {
       hud.showResults(s, scoreRun(s));
     }
 
-    hud.update(s, { prompt: escapeNote ?? promptFor(target.interact, underStream) });
+    setHover(target.mesh);
+    hud.update(s, {
+      prompt: escapeNote ?? promptFor(target.interact),
+      hand: s.holding ? { id: s.holding, apply: canApply(s, underStream), applying: applying } : null,
+    });
   }
 
+  // The duck bobs. It does nothing else, and that is fine.
+  duck.position.y = 0.14 + Math.sin(now / 620) * 0.014;
+  duck.rotation.z = Math.sin(now / 900) * 0.05;
+
+  const b = s.body;
+  foam.update(dt, (b.hairLather + b.condLather + b.bodyLather) / 2, p.x, p.z);
   water.update(dt, flow(s), waterTemp(s));
   showerLight.intensity = 2.2 + flow(s) * 3.4;
   renderer.render(scene, camera);
@@ -198,6 +219,7 @@ function dropSoap() {
 function restart() {
   s = createState();
   started = false;
+  if (hovered) { glow(hovered, 0x000000); hovered = null; }
   if (heldModel) { camera.remove(heldModel); heldModel = null; }
   for (const [mesh, home] of HOME) { mesh.visible = true; mesh.position.copy(home); }
   player.reset();

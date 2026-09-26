@@ -113,6 +113,53 @@ export function buildWater(scene) {
   };
 }
 
+const BUBBLES = 260;
+
+/**
+ * Soap bubbles drifting around you while you have lather on. Squeezing a bottle
+ * should visibly do something in the world, not only move a bar on the HUD.
+ */
+export function buildFoam(scene) {
+  const pos = new Float32Array(BUBBLES * 3);
+  const vel = new Float32Array(BUBBLES);
+  const live = new Uint8Array(BUBBLES);
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const mat = new THREE.PointsMaterial({
+    map: blobTexture(0.62), color: 0xf4fbff, size: 0.05, transparent: true, opacity: 0.72,
+    depthWrite: false, sizeAttenuation: true,
+  });
+  const points = new THREE.Points(geo, mat);
+  scene.add(points);
+  for (let i = 0; i < BUBBLES; i++) pos[i * 3 + 1] = -5;
+
+  return {
+    /** amount 0..1 of total lather on you; (px,pz) is where you are standing */
+    update(dt, amount, px, pz) {
+      points.visible = amount > 0.01;
+      if (!points.visible) return;
+      const want = Math.ceil(BUBBLES * Math.min(1, amount));
+      for (let i = 0; i < BUBBLES; i++) {
+        if (i >= want) { live[i] = 0; pos[i * 3 + 1] = -5; continue; }
+        if (!live[i]) {
+          live[i] = 1;
+          const a = Math.random() * Math.PI * 2, r = 0.15 + Math.random() * 0.5;
+          pos[i * 3]     = px + Math.cos(a) * r;
+          pos[i * 3 + 1] = 0.15 + Math.random() * 1.5;
+          pos[i * 3 + 2] = pz + Math.sin(a) * r;
+          vel[i] = 0.12 + Math.random() * 0.26;
+        }
+        pos[i * 3 + 1] += vel[i] * dt;
+        pos[i * 3]     += Math.sin(pos[i * 3 + 1] * 3 + i) * 0.09 * dt;
+        if (pos[i * 3 + 1] > 2.1) live[i] = 0;
+      }
+      geo.attributes.position.needsUpdate = true;
+      mat.opacity = 0.3 + Math.min(1, amount) * 0.45;
+    },
+  };
+}
+
 /** True when a world position is standing in the falling water. */
 export function inStream(x, z) {
   const [sx, sz] = CONFIG.water.streamCentre;
