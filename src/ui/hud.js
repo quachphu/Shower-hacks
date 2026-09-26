@@ -122,6 +122,8 @@ export function createHud() {
     showStart(on) { el.start.classList.toggle('on', on); },
 
     showResults(s, result) {
+      el.hand.className = '';        // the run is over; nothing is in your hand
+      el.prompt.classList.remove('on');
       $('grade').textContent = result.grade;
       $('points').textContent = result.points;
       const rows = [

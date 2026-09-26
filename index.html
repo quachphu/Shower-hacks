@@ -6,9 +6,11 @@
 <title>Shower Simulator — Knob &amp; Clog</title>
 <style>
   :root {
-    --ink: #cfd8e3; --dim: #7c8798; --panel: rgba(10,14,20,.66);
-    --edge: rgba(126,158,190,.22); --good: #6fd08c; --warn: #f2c14e; --bad: #e8746b;
-    --cold: #5aa9e6; --hot: #ff8a5c;
+    /* Warm plum-charcoal rather than blue-black: the HUD sits over a bright
+       bathroom all game, and a cold slate console fights the tone. */
+    --ink: #ece6ef; --dim: #a096ad; --panel: rgba(30,24,38,.66);
+    --edge: rgba(206,186,224,.20); --good: #82dfa7; --warn: #ffca6d; --bad: #ff9189;
+    --cold: #7cc2f2; --hot: #ffa079;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #05080c; }
@@ -22,7 +24,7 @@
   #hud { position: fixed; inset: 0; pointer-events: none; }
   .panel {
     position: absolute; background: var(--panel); border: 1px solid var(--edge);
-    border-radius: 7px; padding: 9px 11px; backdrop-filter: blur(7px);
+    border-radius: 15px; padding: 11px 13px; backdrop-filter: blur(8px);
   }
   .cap { color: var(--dim); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; }
 
@@ -73,7 +75,7 @@
   #prompt {
     position: absolute; left: 50%; top: calc(50% + 34px); transform: translateX(-50%);
     white-space: nowrap; background: var(--panel); border: 1px solid var(--edge);
-    border-radius: 6px; padding: 5px 11px; opacity: 0; transition: opacity .12s;
+    border-radius: 11px; padding: 6px 13px; opacity: 0; transition: opacity .12s;
   }
   #prompt.on { opacity: 1; }
   #prompt b { color: var(--warn); font-weight: 600; }
@@ -83,7 +85,7 @@
   #hand {
     position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%) translateY(6px);
     display: none; flex-direction: column; gap: 8px; align-items: center;
-    background: var(--panel); border: 1px solid var(--edge); border-radius: 11px;
+    background: var(--panel); border: 1px solid var(--edge); border-radius: 17px;
     padding: 11px 18px 13px; min-width: 250px; backdrop-filter: blur(7px);
     opacity: 0; transition: opacity .16s, transform .16s;
   }
@@ -134,7 +136,7 @@
   .keys { display: grid; grid-template-columns: auto auto; gap: 4px 16px; margin-top: 4px; }
   .keys b { color: #fff; font-weight: 600; text-align: right; }
   .keys span { color: var(--dim); text-align: left; }
-  .cta { margin-top: 8px; color: #fff; border: 1px solid var(--edge); border-radius: 7px; padding: 9px 20px; background: rgba(255,255,255,.05); }
+  .cta { margin-top: 8px; color: #fff; border: 1px solid var(--edge); border-radius: 13px; padding: 9px 20px; background: rgba(255,255,255,.05); }
   #resultLines { display: grid; grid-template-columns: auto auto; gap: 3px 22px; font-variant-numeric: tabular-nums; }
   #resultLines b { color: #fff; font-weight: 500; text-align: left; }
   #resultLines span { color: var(--dim); text-align: right; }
